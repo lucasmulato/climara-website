@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --color-menta: #b8d8be;
+  --color-paper: #f5f8f5;
+  --color-floresta: #1b4332;
+  --color-floresta-claro: #2d6a4f;
+  --color-cobre: #c08a5a;
+  --color-cobre-claro: #d9b08c;
+  --color-texto: #243324;
+  --color-sage: #b8d8be;
+  --color-sage-deep: #a8cdb0;
+  --color-ink: #1b4332;
+  --color-ink-soft: #2d6a4f;
+  --color-gold: #c08a5a;
+  --color-gold-deep: #8a5a32;
+  --color-line: #d5e4d6;
+  --color-danger: #8b3a3a;
+  --radius: 0.75rem;
+  --shadow-card: 0 4px 20px rgba(27, 67, 50, 0.08);
+}
+
+@layer base {
+  html {
+    background: var(--color-menta);
+    color: var(--color-texto);
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-menta);
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 520;
+    letter-spacing: -0.02em;
+    color: var(--color-floresta);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

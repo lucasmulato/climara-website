@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Climara">
+  <rect width="32" height="32" rx="7" fill="#12382C"/>
+  <path fill="#0E2C23" d="M16 4.2c4.6 5.1 7.6 9.6 7.6 13.6 0 5-3.4 9-7.6 9s-7.6-4-7.6-9c0-4 3-8.5 7.6-13.6z"/>
+  <path fill="#B7D4C4" d="M16 6c3.6 4.2 6 7.8 6 11.4 0 4-2.7 7.2-6 7.2s-6-3.2-6-7.2C10 13.8 12.4 10.2 16 6z"/>
+  <path fill="none" stroke="#C49A4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 9.2v12.2M16 13.4 12.4 16M16 17.2 19.8 14.8"/>
+  <circle cx="16" cy="13.4" r="1.35" fill="#C49A4A"/>
+  <circle cx="12.4" cy="16" r="1.05" fill="#C49A4A"/>
+  <circle cx="19.8" cy="14.8" r="1.05" fill="#C49A4A"/>
+</svg>

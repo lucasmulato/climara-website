@@ -1,0 +1,638 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  EMPTY_FIELD,
+  MESSAGE,
+  ROOF_LABEL,
+  SEEDS,
+  STATUS_LABEL,
+  WEEK,
+  formatLog,
+  todayLabel,
+  uid,
+  type FieldState,
+  type ProspectKind,
+  type ProspectStatus,
+  type RoofStatus,
+  type SeedId,
+} from "@/lib/sementeira";
+
+export const Route = createFileRoute("/campo")({ component: Home });
+
+const STORAGE_KEY = "climara-sementeira-v1";
+
+type Tab = "sementes" | "semana" | "log" | "campo";
+
+function Home() {
+  const [tab, setTab] = useState<Tab>("sementes");
+  const [field, setField] = useState<FieldState>(EMPTY_FIELD);
+  const [ready, setReady] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<FieldState>;
+        setField({
+          checks: parsed.checks ?? {},
+          logs: parsed.logs ?? [],
+          prospects: parsed.prospects ?? [],
+          roofs: parsed.roofs ?? [],
+          scouts: parsed.scouts ?? [],
+        });
+      }
+    } catch {
+      setError("Não consegui ler o caderno salvo neste navegador. Começando em branco.");
+    } finally {
+      setReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(field));
+    } catch {
+      setError("O navegador bloqueou salvar. O que você fez agora pode se perder ao recarregar.");
+    }
+  }, [field, ready]);
+
+  const done = WEEK.filter((d) => field.checks[d.id]).length;
+  const counts = useMemo(() => {
+    const comercios = field.prospects.filter((p) => p.kind === "comercio").length;
+    const casas = field.prospects.filter((p) => p.kind === "casa").length;
+    return { comercios, casas };
+  }, [field.prospects]);
+
+  return (
+    <main className="mx-auto min-h-screen max-w-5xl px-4 pb-24 pt-6 sm:px-6">
+      <Link to="/" className="text-sm font-medium text-gold-deep underline-offset-4 hover:underline">
+        Voltar para a Climara
+      </Link>
+      <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:text-left">
+        <img
+          src="/climara-mark.jpg"
+          alt="Marca Climara: folhas com circuitos dourados"
+          className="h-28 w-28 rounded-full object-cover shadow-sm sm:h-32 sm:w-32"
+        />
+        <div className="flex-1">
+          <p className="text-xs font-medium tracking-[0.22em] text-gold-deep uppercase">
+            Guarulhos · caderno de campo
+          </p>
+          <h1 className="mt-1 text-4xl text-ink sm:text-5xl">OP Sementeira</h1>
+          <p className="mt-2 max-w-xl text-base leading-relaxed text-ink-soft">
+            Onde plantar primeiro pra gerar caixa. Escolhe duas sementes. Não tenta fazer tudo.
+          </p>
+        </div>
+      </header>
+
+      {error ? (
+        <p role="alert" className="mt-4 rounded-lg bg-paper px-4 py-3 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <nav className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Seções">
+        {(
+          [
+            ["sementes", "Sementes"],
+            ["semana", "Semana"],
+            ["log", "Log"],
+            ["campo", "Campo"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            aria-current={tab === id ? "page" : undefined}
+            className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition ${
+              tab === id ? "bg-ink text-paper" : "bg-paper/70 text-ink hover:bg-paper"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {!ready ? (
+        <p className="mt-10 text-center text-ink-soft">Abrindo o caderno…</p>
+      ) : tab === "sementes" ? (
+        <Seeds />
+      ) : tab === "semana" ? (
+        <Week
+          checks={field.checks}
+          done={done}
+          counts={counts}
+          copied={copied}
+          onToggle={(id) =>
+            setField((f) => ({ ...f, checks: { ...f.checks, [id]: !f.checks[id] } }))
+          }
+          onCopy={async () => {
+            try {
+              await navigator.clipboard.writeText(MESSAGE);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            } catch {
+              setError("Não deu para copiar. Selecione o texto da mensagem manualmente.");
+            }
+          }}
+        />
+      ) : tab === "log" ? (
+        <Log
+          field={field}
+          onAdd={(entry) => setField((f) => ({ ...f, logs: [entry, ...f.logs] }))}
+          onRemove={(id) => setField((f) => ({ ...f, logs: f.logs.filter((l) => l.id !== id) }))}
+        />
+      ) : (
+        <Campo field={field} setField={setField} />
+      )}
+    </main>
+  );
+}
+
+function Seeds() {
+  return (
+    <section className="mt-8 grid gap-4">
+      <p className="text-sm text-ink-soft">
+        Três portas. Duas mãos. Comissão real, sem inflar número.
+      </p>
+      {SEEDS.map((seed) => (
+        <article key={seed.id} className="rounded-2xl bg-paper p-5 shadow-sm">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-2xl text-ink">{seed.name}</h2>
+            <a
+              href={seed.href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-gold-deep underline-offset-4 hover:underline"
+            >
+              Abrir parceria
+            </a>
+          </div>
+          <p className="mt-2 text-ink">{seed.model}</p>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs tracking-wide text-ink-soft uppercase">Comissão</dt>
+              <dd className="mt-1 text-sm">{seed.commission}</dd>
+            </div>
+            <div>
+              <dt className="text-xs tracking-wide text-ink-soft uppercase">Melhor para</dt>
+              <dd className="mt-1 text-sm">{seed.fit}</dd>
+            </div>
+          </dl>
+          <p className="mt-4 border-t border-line pt-3 text-sm text-ink-soft">{seed.start}</p>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function Week({
+  checks,
+  done,
+  counts,
+  copied,
+  onToggle,
+  onCopy,
+}: {
+  checks: Record<string, boolean>;
+  done: number;
+  counts: { comercios: number; casas: number };
+  copied: boolean;
+  onToggle: (id: string) => void;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="mt-8 grid gap-4">
+      <div className="rounded-2xl bg-ink px-5 py-4 text-paper">
+        <p className="text-sm text-sage">Plano desta semana</p>
+        <p className="font-display text-3xl">
+          {done}/{WEEK.length} passos
+        </p>
+        <p className="mt-1 text-sm text-sage">
+          Lista: {counts.comercios} comércios · {counts.casas} casas. Meta: 5 + 5.
+        </p>
+      </div>
+      <ul className="grid gap-2">
+        {WEEK.map((day) => (
+          <li key={day.id}>
+            <label className="flex min-h-14 cursor-pointer items-start gap-3 rounded-2xl bg-paper px-4 py-3">
+              <input
+                type="checkbox"
+                className="mt-1 size-5 accent-ink"
+                checked={Boolean(checks[day.id])}
+                onChange={() => onToggle(day.id)}
+              />
+              <span>
+                <span className="block font-medium">{day.label}</span>
+                <span className="block text-sm text-ink-soft">{day.detail}</span>
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <article className="rounded-2xl bg-paper p-5">
+        <h2 className="text-2xl">Mensagem pra copiar</h2>
+        <p className="mt-3 text-sm leading-relaxed">{MESSAGE}</p>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="mt-4 min-h-11 rounded-full bg-gold px-5 text-sm font-semibold text-ink"
+        >
+          {copied ? "Copiada" : "Copiar mensagem"}
+        </button>
+      </article>
+    </section>
+  );
+}
+
+function Log({
+  field,
+  onAdd,
+  onRemove,
+}: {
+  field: FieldState;
+  onAdd: (entry: FieldState["logs"][number]) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [seed, setSeed] = useState<SeedId>("desperta");
+  const [who, setWho] = useState("");
+  const [note, setNote] = useState("conta enviada");
+  const [date, setDate] = useState(todayLabel());
+  const [formError, setFormError] = useState<string | null>(null);
+
+  return (
+    <section className="mt-8 grid gap-4">
+      <form
+        className="grid gap-3 rounded-2xl bg-paper p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!who.trim() || !note.trim() || !date.trim()) {
+            setFormError("Data, quem e o que avançou são obrigatórios.");
+            return;
+          }
+          setFormError(null);
+          onAdd({ id: uid(), date: date.trim(), seed, who: who.trim(), note: note.trim() });
+          setWho("");
+        }}
+      >
+        <h2 className="text-2xl">Registrar avanço</h2>
+        <p className="text-sm text-ink-soft">Formato do grupo: [13/10] - Desperta - Padaria do Seu José - conta enviada</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm">
+            Data
+            <input
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Semente
+            <select
+              value={seed}
+              onChange={(e) => setSeed(e.target.value as SeedId)}
+              className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+            >
+              {SEEDS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Quem
+            <input
+              value={who}
+              onChange={(e) => setWho(e.target.value)}
+              placeholder="Padaria do Seu José"
+              className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            O que avançou
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+            />
+          </label>
+        </div>
+        {formError ? (
+          <p role="alert" className="text-sm text-danger">
+            {formError}
+          </p>
+        ) : null}
+        <button type="submit" className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm font-medium text-paper">
+          Registrar
+        </button>
+      </form>
+      {field.logs.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-ink/30 px-4 py-8 text-center text-sm text-ink-soft">
+          Nenhuma conversa avançou ainda. Quando a conta chegar, registra aqui.
+        </p>
+      ) : (
+        <ul className="grid gap-2">
+          {field.logs.map((entry) => (
+            <li key={entry.id} className="flex items-start justify-between gap-3 rounded-2xl bg-paper px-4 py-3">
+              <p className="font-mono text-sm leading-relaxed">{formatLog(entry)}</p>
+              <button
+                type="button"
+                onClick={() => onRemove(entry.id)}
+                className="min-h-11 shrink-0 text-sm text-danger"
+              >
+                Tirar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Campo({
+  field,
+  setField,
+}: {
+  field: FieldState;
+  setField: Dispatch<SetStateAction<FieldState>>;
+}) {
+  return (
+    <section className="mt-8 grid gap-6">
+      <p className="text-sm leading-relaxed text-ink-soft">
+        Telhado e escoteiro ainda não são estoque de ERP. Aqui é a lista viva do bairro — o que existe de verdade,
+        sem número inventado.
+      </p>
+      <Prospects field={field} setField={setField} />
+      <Roofs field={field} setField={setField} />
+      <Scouts field={field} setField={setField} />
+    </section>
+  );
+}
+
+function Prospects({
+  field,
+  setField,
+}: {
+  field: FieldState;
+  setField: Dispatch<SetStateAction<FieldState>>;
+}) {
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState<ProspectKind>("comercio");
+  const [seed, setSeed] = useState<SeedId>("desperta");
+
+  return (
+    <article className="rounded-2xl bg-paper p-5">
+      <h2 className="text-2xl">Dez nomes</h2>
+      <form
+        className="mt-3 grid gap-3 sm:grid-cols-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          setField((f) => ({
+            ...f,
+            prospects: [
+              ...f.prospects,
+              { id: uid(), name: name.trim(), kind, seed, status: "lista" },
+            ],
+          }));
+          setName("");
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nome ou comércio"
+          aria-label="Nome"
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3 sm:col-span-2"
+        />
+        <select
+          value={kind}
+          aria-label="Tipo"
+          onChange={(e) => setKind(e.target.value as ProspectKind)}
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+        >
+          <option value="comercio">Comércio</option>
+          <option value="casa">Casa</option>
+        </select>
+        <button type="submit" className="min-h-11 rounded-full bg-ink text-sm text-paper">
+          Adicionar
+        </button>
+        <select
+          value={seed}
+          aria-label="Semente"
+          onChange={(e) => setSeed(e.target.value as SeedId)}
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3 sm:col-span-2"
+        >
+          {SEEDS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </form>
+      <ul className="mt-4 grid gap-2">
+        {field.prospects.length === 0 ? (
+          <li className="text-sm text-ink-soft">Lista vazia. D3 pede 5 comércios e 5 casas.</li>
+        ) : (
+          field.prospects.map((p) => (
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
+              <span className="text-sm">
+                <strong>{p.name}</strong>
+                <span className="text-ink-soft">
+                  {" "}
+                  · {p.kind === "comercio" ? "comércio" : "casa"} · {SEEDS.find((s) => s.id === p.seed)?.name}
+                </span>
+              </span>
+              <span className="flex items-center gap-2">
+                <select
+                  aria-label={`Status de ${p.name}`}
+                  value={p.status}
+                  onChange={(e) =>
+                    setField((f) => ({
+                      ...f,
+                      prospects: f.prospects.map((x) =>
+                        x.id === p.id ? { ...x, status: e.target.value as ProspectStatus } : x,
+                      ),
+                    }))
+                  }
+                  className="min-h-11 rounded-xl border border-line bg-sage/40 px-2 text-sm"
+                >
+                  {(Object.keys(STATUS_LABEL) as ProspectStatus[]).map((k) => (
+                    <option key={k} value={k}>
+                      {STATUS_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="min-h-11 text-sm text-danger"
+                  onClick={() =>
+                    setField((f) => ({ ...f, prospects: f.prospects.filter((x) => x.id !== p.id) }))
+                  }
+                >
+                  Tirar
+                </button>
+              </span>
+            </li>
+          ))
+        )}
+      </ul>
+    </article>
+  );
+}
+
+function Roofs({
+  field,
+  setField,
+}: {
+  field: FieldState;
+  setField: Dispatch<SetStateAction<FieldState>>;
+}) {
+  const [place, setPlace] = useState("");
+  const [note, setNote] = useState("");
+
+  return (
+    <article className="rounded-2xl bg-paper p-5">
+      <h2 className="text-2xl">Telhados</h2>
+      <p className="mt-1 text-sm text-ink-soft">Endereço ou apelido. Sem m² inventado.</p>
+      <form
+        className="mt-3 grid gap-3 sm:grid-cols-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!place.trim()) return;
+          setField((f) => ({
+            ...f,
+            roofs: [...f.roofs, { id: uid(), place: place.trim(), note: note.trim(), status: "olhar" }],
+          }));
+          setPlace("");
+          setNote("");
+        }}
+      >
+        <input
+          value={place}
+          onChange={(e) => setPlace(e.target.value)}
+          placeholder="Onde"
+          aria-label="Onde fica o telhado"
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+        />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Observação"
+          aria-label="Observação"
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+        />
+        <button type="submit" className="min-h-11 rounded-full bg-ink text-sm text-paper">
+          Anotar telhado
+        </button>
+      </form>
+      <ul className="mt-4 grid gap-2">
+        {field.roofs.length === 0 ? (
+          <li className="text-sm text-ink-soft">Nenhum telhado anotado.</li>
+        ) : (
+          field.roofs.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
+              <span>
+                <strong>{r.place}</strong>
+                {r.note ? <span className="text-ink-soft"> · {r.note}</span> : null}
+              </span>
+              <select
+                aria-label={`Status do telhado ${r.place}`}
+                value={r.status}
+                onChange={(e) =>
+                  setField((f) => ({
+                    ...f,
+                    roofs: f.roofs.map((x) =>
+                      x.id === r.id ? { ...x, status: e.target.value as RoofStatus } : x,
+                    ),
+                  }))
+                }
+                className="min-h-11 rounded-xl border border-line bg-sage/40 px-2"
+              >
+                {(Object.keys(ROOF_LABEL) as RoofStatus[]).map((k) => (
+                  <option key={k} value={k}>
+                    {ROOF_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))
+        )}
+      </ul>
+    </article>
+  );
+}
+
+function Scouts({
+  field,
+  setField,
+}: {
+  field: FieldState;
+  setField: Dispatch<SetStateAction<FieldState>>;
+}) {
+  const [name, setName] = useState("");
+  const [focus, setFocus] = useState("Comércios");
+
+  return (
+    <article className="rounded-2xl bg-paper p-5">
+      <h2 className="text-2xl">Escoteiros</h2>
+      <p className="mt-1 text-sm text-ink-soft">Quem planta esta semana, e em qual terreno.</p>
+      <form
+        className="mt-3 grid gap-3 sm:grid-cols-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          setField((f) => ({
+            ...f,
+            scouts: [...f.scouts, { id: uid(), name: name.trim(), focus: focus.trim() || "A definir" }],
+          }));
+          setName("");
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nome"
+          aria-label="Nome do escoteiro"
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+        />
+        <input
+          value={focus}
+          onChange={(e) => setFocus(e.target.value)}
+          aria-label="Foco"
+          className="min-h-11 rounded-xl border border-line bg-sage/40 px-3"
+        />
+        <button type="submit" className="min-h-11 rounded-full bg-ink text-sm text-paper">
+          Entrar no campo
+        </button>
+      </form>
+      <ul className="mt-4 grid gap-2">
+        {field.scouts.length === 0 ? (
+          <li className="text-sm text-ink-soft">Ninguém listado ainda.</li>
+        ) : (
+          field.scouts.map((s) => (
+            <li key={s.id} className="flex items-center justify-between border-t border-line pt-2 text-sm">
+              <span>
+                <strong>{s.name}</strong>
+                <span className="text-ink-soft"> · {s.focus}</span>
+              </span>
+              <button
+                type="button"
+                className="min-h-11 text-danger"
+                onClick={() => setField((f) => ({ ...f, scouts: f.scouts.filter((x) => x.id !== s.id) }))}
+              >
+                Tirar
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </article>
+  );
+}
