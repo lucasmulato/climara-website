@@ -52,8 +52,8 @@ function Landing() {
           <a href="#semana" className="hidden text-floresta sm:inline">
             Semana
           </a>
-          <Link to="/campo" className="min-h-11 rounded-xl px-3 py-2 text-floresta">
-            Caderno
+          <Link to="/servicos" className="min-h-11 rounded-xl px-3 py-2 text-floresta">
+            Serviços
           </Link>
         </nav>
       </header>
@@ -67,7 +67,7 @@ function Landing() {
             className="relative z-10 h-28 w-28 rounded-full object-cover sm:h-32 sm:w-32"
           />
           <p className="relative z-10 mt-6 text-xs font-medium tracking-[0.22em] text-gold-deep uppercase">
-            Guarulhos · energia limpa
+            Jaraguá do sul · Energia limpa
           </p>
           <h1 className="relative z-10 mt-3 max-w-xl text-4xl leading-tight sm:text-6xl">
             O futuro não será distópico. Será plantado.
@@ -170,10 +170,10 @@ function Landing() {
             Escrever para climaratech@gmail.com
           </a>
           <Link
-            to="/campo"
+            to="/servicos"
             className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-cobre px-8 text-sm font-medium text-floresta"
           >
-            Abrir o caderno da equipe
+            Central de operações
           </Link>
         </div>
       </section>
@@ -183,7 +183,7 @@ function Landing() {
           <div>
             <p className="font-display text-2xl text-paper">Climara</p>
             <p className="mt-1 max-w-md text-sm text-menta">
-              Laboratório de futuros regenerativos. Guarulhos.
+              Laboratório de futuros regenerativos. Jaraguá do sul.
             </p>
           </div>
           <a href={MAIL} className="text-sm text-cobre-claro">

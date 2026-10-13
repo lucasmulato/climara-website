@@ -17,11 +17,11 @@ import {
   type SeedId,
 } from "@/lib/sementeira";
 
-export const Route = createFileRoute("/campo")({ component: Home });
+export const Route = createFileRoute("/servicos")({ component: Home });
 
 const STORAGE_KEY = "climara-sementeira-v1";
 
-type Tab = "sementes" | "semana" | "log" | "campo";
+type Tab = "sementes" | "semana" | "log" | "Servicos";
 
 function Home() {
   const [tab, setTab] = useState<Tab>("sementes");
@@ -44,7 +44,7 @@ function Home() {
         });
       }
     } catch {
-      setError("Não consegui ler o caderno salvo neste navegador. Começando em branco.");
+      setError("Não consegui ler as anotações salvas neste navegador. Começando em branco.");
     } finally {
       setReady(true);
     }
@@ -79,7 +79,7 @@ function Home() {
         />
         <div className="flex-1">
           <p className="text-xs font-medium tracking-[0.22em] text-gold-deep uppercase">
-            Guarulhos · caderno de campo
+            Jaraguá do Sul · Anotações de serviços
           </p>
           <h1 className="mt-1 text-4xl text-ink sm:text-5xl">OP Sementeira</h1>
           <p className="mt-2 max-w-xl text-base leading-relaxed text-ink-soft">
@@ -100,7 +100,7 @@ function Home() {
             ["sementes", "Sementes"],
             ["semana", "Semana"],
             ["log", "Log"],
-            ["campo", "Campo"],
+            ["servicos", "Serviços"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -118,7 +118,7 @@ function Home() {
       </nav>
 
       {!ready ? (
-        <p className="mt-10 text-center text-ink-soft">Abrindo o caderno…</p>
+        <p className="mt-10 text-center text-ink-soft">Abrindo as anotações…</p>
       ) : tab === "sementes" ? (
         <Seeds />
       ) : tab === "semana" ? (
@@ -147,7 +147,7 @@ function Home() {
           onRemove={(id) => setField((f) => ({ ...f, logs: f.logs.filter((l) => l.id !== id) }))}
         />
       ) : (
-        <Campo field={field} setField={setField} />
+        <Servico field={field} setField={setField} />
       )}
     </main>
   );
@@ -355,7 +355,7 @@ function Log({
   );
 }
 
-function Campo({
+function Servico({
   field,
   setField,
 }: {
