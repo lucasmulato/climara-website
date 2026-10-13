@@ -1,5 +1,5 @@
 # Climara
-
+ 
 **Laboratório de futuros regenerativos.**
 
 Site institucional e caderno de campo da Climara em Guarulhos: energia limpa acessível para a casa, o pequeno comércio e o bairro.
